@@ -13,7 +13,8 @@
 #include <SI4703.h>                                                 // Biblioteca Radio Si4703
 #include <RDSParser.h>                                              // Controlar o conteudo do RDS
 #include <EEPROM.h>                                                 // To save configuration parameters such as channel and volume.
-#include "RotaryEncoder.h"                                          // Biblioteca de Controle do Encoder KY-040
+#include <RotaryEncoderKY040.h>                                     // Biblioteca de Controle do Encoder KY-040
+#include <RotaryEncoder.h>                                          // Biblioteca de Controle do Encoder KY-040
 
 #define DEBUG                                                       // Habilita o monitoramento Serial do Projeto
 #define PT2314_SERIAL_MONITOR                                       // Habilita o monitoramento Serial do Processador de Audio
@@ -36,15 +37,6 @@ void O_1_tx_ext_maxPopCallback(void *ptr);
 void O_1_bt_radioPopCallback(void *ptr);
 void O_5_bt_homePopCallback( void *ptr );
 */
-
-// Inicialização das variaveis das telas
-char buffer[100] = {0};
-int temperatura_in = 0;
-int temperatura_in_min = 99;
-int temperatura_in_max = 0;
-int temperatura_ex = 0;
-int temperatura_ex_min = 99;
-int temperatura_ex_max = 0;
 
 // Cria as listas de objetos das telas para o Loop
 NexTouch *nex_listen_list_0[] = {                                     // Tela 0 - Abertura
@@ -94,16 +86,20 @@ NexTouch *nex_listen_list_5[] = {                                     // Tela 5 
 
 // Pinagem do Arduino Mega 2560
 #define                   pinoTensao          A4                      // A4             - Analogica     - Entrada Tensao da Bateria
-#define                   pinoEncoderVolDT    2                       // 2              - PWM           - Encoder Volume DT  - DATA
-#define                   pinoEncoderVolCLK   3                       // 3              - PWM           - Encoder Volume CLK - CLOCK
-#define                   pinoEncoderVolSW    4                       // 4              - PWM           - Encoder Volume SW  - SWITCH
+#define                   pinoNextionTX       16                      // 16             - Communication - Nextion RX2
+#define                   pinoNextioRX        17                      // 17             - Communication - Nextion TX2
+#define                   pinoEncoderVolDT    18                      // 18             - Communication - Encoder Volume DT  - DATA - TX1
+#define                   pinoEncoderVolCLK   19                      // 19             - Communication - Encoder Volume CLK - CLOCK - RX1
+#define                   pinoEncoderVolSW    A6                      // A6             - Analogica     - Encoder Volume SW  - SWITCH
+#define                   pinoFrqUp           A2                      // A2             - Analogica     - Encoder Frequencia - Pino 1 - UP
+#define                   pinoFrqDw           A3                      // A3             - Analogica     - Encoder Frequencia - Pino 2 - Down
 #define                   pinoTempInt         8                       // 8              - PWM           - Entrada Temperatura Interna
 #define                   pinoTempExt         9                       // 9              - PWM           - Entrada Temperatura Externa
 #define                   pinoSDA             20                      // 20             - Communication - SDA/SDIO - I2C
 #define                   pinoSCL             21                      // 21             - Communication - SCL/SCLK - I2C
-#define                   pinoSDA1                                    // Pino Extra     - Communication - SDA1/SDIO1 - I2C - RTC
-#define                   pinoSCL1                                    // Pino Extra     - Communication - SCL1/SCLK1 - I2C - RTC
-#define                   pinoRSTRadio        52                      // 52             - Digital       - Reset do Radio
+#define                   pinoSDA1            ?                       // Pino Extra     - Communication - SDA1/SDIO1 - I2C - RTC
+#define                   pinoSCL1            ?                       // Pino Extra     - Communication - SCL1/SCLK1 - I2C - RTC
+#define                   pinoRSTRadio        2                      // 52             - Digital       - Reset do Radio
 
 #define                   ONE_WIRE_BUS_1      pinoTempInt
 #define                   ONE_WIRE_BUS_2      pinoTempExt
@@ -113,7 +109,13 @@ OneWire                   oneWire_in(ONE_WIRE_BUS_1);                 // Setup a
 OneWire                   oneWire_ex(ONE_WIRE_BUS_2);
 DallasTemperature         sensor_int(&oneWire_in);                    // Pass our oneWire reference to Dallas Temperature.
 DallasTemperature         sensor_ext(&oneWire_ex);
-RotaryEncoder             rotary_vol(&RotaryChanged, pinoEncoderVolDT, pinoEncoderVolCLK, pinoEncoderVolSW);          // Pins 2 (DT), 3 (CLK), 4 (SW)
+RotaryEncoderKY040        rotary_vol(&RotaryChangedVol, pinoEncoderVolDT, pinoEncoderVolCLK, pinoEncoderVolSW);          // Pins 2 (DT), 3 (CLK), 4 (SW)
+RotaryEncoder             *encoder = nullptr;                         // Configura o RoraryEncoder de Frequencia
+
+// Assign the addresses of your 1-Wire temp sensors.
+// See the tutorial on how to obtain these addresses: http://www.hacktronics.com/Tutorials/arduino-1-wire-address-finder.html
+DeviceAddress             InThermo            = { 0x28, 0xFF, 0x77, 0x01, 0x83, 0x16, 0x05, 0x04 };
+DeviceAddress             OutThermo           = { 0x28, 0xFF, 0x02, 0xE0, 0xA0, 0x16, 0x04, 0x53 };
 
 // Conections in I2C pinoSDA(20) - pinoSCL(21)
 PT2314                    pt2314;                                     // Processador de Audio - Midias    - PT2314_ADDRESS 0x44
@@ -129,10 +131,21 @@ bool                      century             = false;                // RTC - d
 bool                      h12Flag             = false;                // RTC - define a apresentação da hora em 24hr
 bool                      pmFlag              = false;                // RTC - define se mostra ou não o turno am/pm
 
-bool                      _ficaLoop           = true;
-int                       Counter             = 0;                    // Contador da posição do Volume
-int                       LastCount           = 0;                    // Rotary test de estado do Volume
-int                       active_page         = 1;                    // Define a Pagina ativa no monitor nextion 0..6
+bool                      _ficaLoop           = true;                 // Radio - Laço do Radio
+int                       active_page         = 1;                    // Radio - Define a Pagina ativa no monitor nextion 0..6
+
+int                       Counter             = 0;                    // Radio - Contador da posição do Volume
+int                       LastCount           = 0;                    // Radio - Rotary test de estado do Volume
+int                       CounterFrq          = 0;                    // Radio - Contador da posição da Frequencia
+int                       LastCountFrq        = 0;                    // Radio - Rotary test de estado da Frequencia
+
+char                      buffer[100]         = {0};                  // Nextion - Buffer para apresentar valores na tela
+int                       temperatura_in      = 0;                    // Temp.   - Temperatura Interna
+int                       temperatura_in_min  = 99;                   // Temp.   - Temperatura Interna Minima
+int                       temperatura_in_max  = 0;                    // Temp.   - Temperatura Interna Maxima
+int                       temperatura_ex      = 0;                    // Temp.   - Temperatura Externa
+int                       temperatura_ex_min  = 99;                   // Temp.   - Temperatura Externa Minima
+int                       temperatura_ex_max  = 0;                    // Temp.   - Temperatura Externa Maxima
 
 void setup() {
   
@@ -145,6 +158,8 @@ void setup() {
   pinMode(pinoEncoderVolDT, INPUT);
   pinMode(pinoEncoderVolCLK, INPUT);
   pinMode(pinoEncoderVolSW, INPUT_PULLUP);
+  pinMode(pinoFrqUp, INPUT);
+  pinMode(pinoFrqDw, INPUT);
 
   if (!nexInit())                                                     // Inicializa o Display
   {
@@ -193,40 +208,44 @@ void setup() {
   O_5_bt_stop.attachPop( O_5_bt_stopPopCallback);*/
 
   Wire.begin();                                                       // Inicializa o RTC
-  if (!Wire.available()) {
+  delay(100);
+  if (Wire.available() > 2) {
     #ifdef DEBUG
-     Serial.println(F("Wire - RTC com mal funcionamento..."));
+      Serial.println(F("Wire - RTC com mal funcionamento..."));
     #endif
   }
  
   sensor_int.begin();                                                 // Inicializa o Sensor Temperatura Interna
-  if (!sensor_int.isConnected(0)) {
+  sensor_int.setResolution(InThermo, 10);
+  if (!sensor_int.isConnected(InThermo)) {
     #ifdef DEBUG
-     Serial.println(F("DallasTemperature - Sensor Temperatura Interno com mal funcionamento..."));
+      Serial.println(F("DallasTemperature - Sensor Temperatura Interno com mal funcionamento..."));
     #endif
   }
   
   sensor_ext.begin();                                                 // Inicializa o Sensor Temperatura Externa
-  if (!sensor_ext.isConnected(0)) {
+  sensor_ext.setResolution(OutThermo, 10);
+  if (!sensor_ext.isConnected(OutThermo)) {
     #ifdef DEBUG
-     Serial.println(F("DallasTemperature - Sensor Temperatura Externo com mal funcionamento..."));
+      Serial.println(F("DallasTemperature - Sensor Temperatura Externo com mal funcionamento..."));
     #endif
   }
 
   pt2314.begin();                                                     // Inicializa o Processdor de Audio - Midias 0 - Radio
   if (!pt2314.isConnected()) {
     #ifdef DEBUG
-     Serial.println(F("PT2314 - Processador de Audio com mal funcionamento..."));
+      Serial.println(F("PT2314 - Processador de Audio com mal funcionamento..."));
     #endif
   }
 
   if(!setup_radio()) {                                                // Inicializa o Radio - SI4703
     #ifdef DEBUG
-     Serial.println(F("SI4703 - Radio com mal funcionamento..."));
+      Serial.println(F("SI4703 - Radio com mal funcionamento..."));
     #endif
   }
   
   rotary_vol.setup();                                                 // Inicaliza o Botão de Volume/Mute
+  encoder                   = new RotaryEncoder(pinoFrqUp, pinoFrqDw, RotaryEncoder::LatchMode::TWO03); // Inicia o RoraryEncoder de Frequencia
 
   #ifdef DEBUG
     Serial.println(F("setup done"));
@@ -236,6 +255,11 @@ void setup() {
   delay(2000);
 
   O_0_m0PopCallback(0);                                               // Após acabar o Setup chama a tela de menu
+  
+  // Temporario
+  active_page = 5;
+  O_5_radio.show();
+  executaRadio();
 }
 
 void loop() {

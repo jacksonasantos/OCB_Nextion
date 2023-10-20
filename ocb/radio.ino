@@ -6,10 +6,17 @@
 // ***************************************************************************************
 #define                   FIX_BAND        RADIO_BAND_FM             // < The band that will be tuned by this sketch is FM.
 #define                   FIX_STATION     9830                      // < The station that will be tuned by this sketch is 89.30 MHz.
-#define                   FIX_VOLUME      8                         // < The volume that will be set by this sketch is level 4.
+#define                   FIX_VOLUME      15                        // < The volume that will be set by this sketch is level 4.
+
+#define                   encoderMin      radio.getMinFrequency()
+#define                   encoderMax      radio.getMaxFrequency()
+#define                   encoderStep     radio.getFrequencyStep()
 
 char                      BAND[4][9]      = {"FM", "FM Mundo", "AM", "KW"};
- 
+
+int                       _volume         = FIX_VOLUME;
+int                       _frequencia     = FIX_STATION;
+
 void O_5_bt_homePopCallback(void *ptr) {
   #ifdef DEBUG
     Serial.print(F("Retornando ao Menu....... "));
@@ -54,11 +61,11 @@ bool setup_radio() {
   bool _ok = true;
 
   pt2314.setChannel(0);                                             // Set all audio processor setting to the fixed values.  
-  pt2314.setVolume(100);
+  pt2314.setVolume(63);
   pt2314.setAttn(15, 15);  
   pt2314.setLoudness(false);
   pt2314.setMute(false);
-  pt2314.setGain(1);
+  pt2314.setGain(0);
 
   #ifdef DEBUG
     Serial.println(F("Config. Processador Audio - PT2314"));
@@ -74,9 +81,7 @@ bool setup_radio() {
 
   radio.setup(RADIO_RESETPIN, pinoRSTRadio);
   radio.setup(RADIO_SDAPIN, pinoSDA);
-  radio.debugEnable(true);                                          // Enable information to the Serial port
-  radio._wireDebug(true);
-  radio.setup(RADIO_FMSPACING, RADIO_FMSPACING_100);                // Set FM Options for Europe
+  radio.setup(RADIO_FMSPACING, RADIO_FMSPACING_200);                // Set FM Options for USA
   radio.setup(RADIO_DEEMPHASIS, RADIO_DEEMPHASIS_50);
   
   radio.initWire(Wire);                                             // Initialize the Radio
@@ -89,6 +94,9 @@ bool setup_radio() {
   radio.attachReceiveRDS(RDS_process);                              // setup the information chain for RDS data.
 
   #ifdef DEBUG
+    radio.debugEnable(true);                                          // Enable information to the Serial port
+    radio._wireDebug(true);
+    
     Serial.println(F("Config. Radio - SI4703"));
     Serial.print(F("   Banda      : "));    Serial.println(BAND[radio.getBand()-1]);
     Serial.print(F("   Frequencia : "));    Serial.println(radio.getFrequency());
@@ -127,24 +135,51 @@ void executaRadio() {
     Serial.print(F("   Radio      :" ));    radio.debugRadioInfo();
     Serial.print(F("   Audio      :" ));    radio.debugAudioInfo();
   #endif
-///////////////////////////////////////////////////////////
+
   static unsigned long _now          = millis();
   static unsigned long _nextFreqTime = 1;
-  static int           _volume       = radio.getVolume();
-  static double        _frequencia   = radio.getFrequency();
 
-  Counter = _volume; 
-  LastCount = 0;               // Rotary test de estado
+  encoder->setPosition(FIX_STATION / encoderStep);
+  int lastPos = encoder->getPosition() * encoderStep;               // Rotary Frequencia - teste de estado
+  Counter     = _volume;                                            // Rotary Volume - Controle
+  LastCount   = 0;                                                  // Rotary Volume - teste de estado
 
   O_5_tx_bandaPopCallback(BAND[radio.getBand()-1]);
   O_5_pb_volume.setValue((int)(radio.getVolume()*6.6667));
+  O_5_sl_freq.setValue(lastPos);
+  O_5_tx_frequenciaPopCallback(lastPos);
+  O_5_bt_mute.setValue(radio.getMute()?1:0);
 
   while(_ficaLoop) {
-    
+
     _now = millis();
     
-    nexLoop(nex_listen_list_5);                                     // Testa objetos do monitor
+    nexLoop(nex_listen_list_5);                                       // Testa objetos do monitor
+    
+    encoder->tick();
+    
+    int newPos = encoder->getPosition() * encoderStep;
 
+    if (newPos < encoderMin) {
+      encoder->setPosition(encoderMin / encoderStep);
+      newPos = encoderMin;
+
+    } else if (newPos > encoderMax) {
+      encoder->setPosition(encoderMax / encoderStep);
+      newPos = encoderMax;
+    }
+
+    if (lastPos != newPos) {
+      #ifdef DEBUG
+        Serial.print("Encoder Frequencia: ");
+        Serial.println(newPos); 
+      #endif
+      radio.setFrequency(newPos);
+      O_5_sl_freq.setValue(newPos);
+      O_5_tx_frequenciaPopCallback(newPos);
+      lastPos = newPos;
+    }
+    
     if (LastCount != Counter) {                                     // Atualiza o controle do Volume
       radio.setVolume(Counter);
       O_5_pb_volume.setValue((int)(Counter*6.6667));
@@ -155,24 +190,14 @@ void executaRadio() {
       radio.setMute(!radio.getMute());
       O_5_bt_mute.setValue(radio.getMute()?1:0);
     }
-
-  /*  else if (digitalRead(pinobotaoNext)) {
-      radio.setFrequency(_frequencia+= radio.getFrequencyStep());
-      //mostraFrequencia(); 
-    }
-    else if (digitalRead(pinobotaoPrev)){
-      radio.setFrequency(_frequencia-= radio.getFrequencyStep());
-      //mostraFrequencia(); 
-    }
-    else if (digitalRead(pinobotaoOK)){
-      radio.setBassBoost(!radio.getBassBoost());
-    } */
-    else if (_now > _nextFreqTime )     // Atualiza tela do radio
+    else if (_now > _nextFreqTime )                                 // Atualiza tela do radio
     {    
       radio.checkRDS();
       radio.getRadioInfo(&radioInfo);
       radio.getAudioInfo(&audioInfo);
       mostraRDS();
+
+      radio.formatFrequency(s, sizeof(s));
 
       #ifdef DEBUG
         Serial.println(F("Execução Radio - SI4703"));
@@ -181,35 +206,27 @@ void executaRadio() {
         Serial.print(F("   Volume     : "));    Serial.println(radio.getVolume());    
         Serial.print(F("   Radio      : "));    radio.debugRadioInfo();
         Serial.print(F("   Audio      : "));    radio.debugAudioInfo();
-      #endif
-
-      //imprimeTexto((audioInfo.bassBoost ? "BASS " : "     "),"D",70);
-      //imprimeTexto((radioInfo.tuned     ? "TUNED" : "     "),"D",85);
-      //mostraFrequencia(); 
-      //mostraVolume();    
+      #endif    
       
-      O_5_tx_frequenciaPopCallback(s);
      _nextFreqTime = _now + 1000;
     } 
   }
 }
-
-
 // ****************************************************************************************
-// @name     RotaryChanged
+// @name     RotaryChangedVol
 // @subject  Analiza a mudança de estado do Rotary KY-040
 // ****************************************************************************************
-void RotaryChanged()
+void RotaryChangedVol()
 {
   const unsigned int state = rotary_vol.GetState();
   
   if (state & DIR_CW) { 
     Counter++;
-    if (Counter>radio.getMaxVolume()){Counter=radio.getMaxVolume();}
+    if (Counter>radio.getMaxVolume()) {Counter=radio.getMaxVolume();}
   }
   if (state & DIR_CCW) {
     Counter--;    
-    if (Counter<0){Counter=0;}
+    if (Counter<0) {Counter=0;}
   }
 }
 // ****************************************************************************************
@@ -221,29 +238,18 @@ void mostraRDS()
    rds.attachServiceNameCallback(DisplayServiceName);
    rds.attachTimeCallback(DisplayTime);
 }
-
-/// Update the ServiceName text when in RDS mode.
-void DisplayServiceName(char *name) {
+void DisplayServiceName(char *name) {                                 // Update the ServiceName text when in RDS mode.
   #ifdef DEBUG
-    Serial.print("RDS: "); Serial.println(name);
+    Serial.print("RDS-Name: "); Serial.println(name);
   #endif
-  //imprimeTexto(name,"C",170);
 } 
-		
-void DisplayTime(uint8_t hour, uint8_t minute) {
+void DisplayTime(uint8_t hour, uint8_t minute) {                      // Updata the Time when in RDS-Time.
   #ifdef DEBUG
-    Serial.print("RDS-Time:");
+    Serial.print("RDS-Time: ");
     if (hour < 10) Serial.print('0'); 
       Serial.print(hour); 
     Serial.print(':'); 
     if (minute < 10) Serial.print('0');  
-      Serial.print(minute);
+      Serial.println(minute);
   #endif
-
-  /*if (hour < 10) monitor.print('0'); 
-  monitor.print(hour);
-  monitor.print(":");
-  if (minute < 10) monitor.print('0');  
-  monitor.print(minute);
-  */
 } 

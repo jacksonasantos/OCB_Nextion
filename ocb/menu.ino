@@ -5,8 +5,6 @@
 // @date     2023/10/02
 // ****************************************************************************************
 
-#include <string.h>
-
 void O_1_tx_diaPopCallback(void *ptr)       {  O_1_tx_dia.setText(ptr); }
 void O_1_tx_mesPopCallback(void *ptr)       {  O_1_tx_mes.setText(ptr); }
 void O_1_tx_anoPopCallback(void *ptr)       {  O_1_tx_ano.setText(ptr); }
