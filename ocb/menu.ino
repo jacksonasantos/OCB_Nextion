@@ -4,7 +4,6 @@
 // @author   Jackson Alessandro dos Santos
 // @date     2023/10/02
 // ****************************************************************************************
-
 void O_1_tx_diaPopCallback(void *ptr)       {  O_1_tx_dia.setText(ptr); }
 void O_1_tx_mesPopCallback(void *ptr)       {  O_1_tx_mes.setText(ptr); }
 void O_1_tx_anoPopCallback(void *ptr)       {  O_1_tx_ano.setText(ptr); }
@@ -19,13 +18,12 @@ void O_1_tx_externaPopCallback(void *ptr)   {  O_1_tx_externa.setText(ptr); }
 void O_1_tx_ext_minPopCallback(void *ptr)   {  O_1_tx_ext_min.setText(ptr); }
 void O_1_tx_ext_maxPopCallback(void *ptr)   {  O_1_tx_ext_max.setText(ptr); }
 
+// ****************************************************************************************
 void O_1_bt_radioPopCallback(void *ptr)    { 
   #ifdef DEBUG
-      Serial.print(F("Chamando o PUSH Radio....... "));
+      Serial.print(F("Chamando o POP Radio....... "));
   #endif
 
-  active_page = 5;
-  O_5_radio.show();
   executaRadio();
 
   #ifdef DEBUG
@@ -34,9 +32,51 @@ void O_1_bt_radioPopCallback(void *ptr)    {
 }
 
 // ****************************************************************************************
-// Leitura do valor de Tensão da Bateria
+
+void O_1_bt_sdPopCallback(void *ptr) { 
+  #ifdef DEBUG
+      Serial.print(F("Chamando o POP SD....... "));
+  #endif
+
+  executaSDCard();
+
+  #ifdef DEBUG
+      Serial.println(F("ok, PAGE 6-SD ativada......."));
+  #endif
+}
+/*
 // ****************************************************************************************
-void atualizaTensao()
+void O_1_bt_usbPopCallback(void *ptr) { 
+  #ifdef DEBUG
+      Serial.print(F("Chamando o POP USB....... "));
+  #endif
+
+  active_page = 6;
+  O_6_midi.show();
+  executaUSB();
+
+  #ifdef DEBUG
+      Serial.println(F("ok, PAGE 6-SD ativada......."));
+  #endif
+}
+
+// ****************************************************************************************
+void O_1_bt_auxiliarPopCallback(void *ptr) { 
+  #ifdef DEBUG
+      Serial.print(F("Chamando o POP Auxiliar....... "));
+  #endif
+
+  active_page = 6;
+  O_6_midi.show();
+  executaAuxiliar();
+
+  #ifdef DEBUG
+      Serial.println(F("ok, PAGE 6-Auxiliar ativada......."));
+  #endif
+}
+*/
+// ****************************************************************************************
+void atualizaTensao()                                                                           // Leitura do valor de Tensão da Bateria
 {
   float                     valorTensaoDC;                                                      // variavel para receber o valor lido do sensor
   int                       amostragem      = 100;                                              // variavel para der uma media de calculos
@@ -65,8 +105,8 @@ void atualizaTensao()
 
   finalTensaoDC = mediaTensaoDC / amostragem;                                                   // calcula a media dos valores
 
-  if (finalTensaoDC < voltage_ref ) { incremento = 180; }
-  pointer_pos       = (int) ((abs(finalTensaoDC - voltage_ref) * passo) + incremento);          // Posição do Ponteiro no Gauge
+  if (finalTensaoDC < voltage_ref ) { incremento = 360; }
+  pointer_pos       = (int) (((finalTensaoDC- voltage_ref) * passo) + incremento);          // Posição do Ponteiro no Gauge
   if (finalTensaoDC<voltage_min) {pointer_pos = pointer_min;}
   if (finalTensaoDC>voltage_max) {pointer_pos = pointer_max;}
 
@@ -82,9 +122,7 @@ void atualizaTensao()
 }
 
 // ****************************************************************************************
-// Leitura dos valores de Temperatura - Sensor de Tenpertura Interno e Externo
-// ****************************************************************************************
-void atualizaTemperatura(void)
+void atualizaTemperatura(void)                                                                  // Leitura dos valores de Temperatura - Sensor de Tenpertura Interno e Externo
 {
   sensor_int.requestTemperaturesByIndex(0);
   temperatura_in = (int)sensor_int.getTempCByIndex(0);
@@ -140,9 +178,7 @@ void atualizaTemperatura(void)
 }
 
 // ****************************************************************************************
-// Leitura dos dados do Relógio
-// ****************************************************************************************
-void atualizaRelogio(void)
+void atualizaRelogio(void)                                                                      // Leitura dos dados do Relógio   
 {
   char daysOfTheWeek[7][13] = {"Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"};
   char months[12][9] = {"Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"};
