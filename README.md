@@ -2,7 +2,7 @@
 Onboard Computer Beetle 
 
 - Desenvolvimento
-  - Arduino - C++
+  - Arduino - C++			- https://www.arduino.cc/en/software
   - Telas no Nextion Editor 1.65.1
 - Projeto 
   - Fritzing 0.9.3
