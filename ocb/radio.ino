@@ -164,7 +164,7 @@ bool setup_radio() {
   if ( pt2314.isConnected() ) {
                                          
     pt2314.setVolume(30);
-    pt2314.setAttn(10, 10);  
+    pt2314.setAttn(10);  
     pt2314.setLoudness(true);
     pt2314.setMute(false);
     pt2314.setGain(0);
