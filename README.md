@@ -1,13 +1,13 @@
 # OCB
 Onboard Computer Beetle 
 
-- Desenvolvimento
+## Desenvolvimento
   - Arduino - C++			- https://www.arduino.cc/en/software
   - Telas no Nextion Editor 1.65.1	- https://nextion.tech/nextion-editor/
-- Projeto 
+### Projeto 
   - Fritzing 0.9.3
 
-- Componentes
+## Componentes
   - Processamento 		- Arduino Mega 2560
   - Display 			- Device Nextion NX8048T070_011
   - Componentes
