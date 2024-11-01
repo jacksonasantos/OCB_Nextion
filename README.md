@@ -1,4 +1,5 @@
 # OCB - Onboard Computer Beetle 
+Projeto do computador de bordo do Fusquinha com a automatização de diversos componentes eletrônicos e a implantação de um Multimidia.
 
 ## Desenvolvimento
   - Arduino - C++			- https://www.arduino.cc/en/software/
