@@ -1,21 +1,26 @@
 # OCB
 Onboard Computer Beetle 
 
-- Desenvolvimento
+## Desenvolvimento
   - Arduino - C++			- https://www.arduino.cc/en/software
   - Telas no Nextion Editor 1.65.1	- https://nextion.tech/nextion-editor/
-- Projeto 
+### Projeto 
   - Fritzing 0.9.3
 
-- Componentes
+## Componentes
   - Processamento 		- Arduino Mega 2560
   - Display 			- Device Nextion NX8048T070_011
-  - Controle 
-  	Temperatura 		- DS18B20
-	Processamento Som 	- PT2314
-  	Radio			- SI4307
-	Amplificador		- OEP30Wx2
-	Encoder 		- KY-040 (2)
-	Relogio RTC		- DS3231 	
-	Regulador de Tensão 	- LM2596
-	Sensor Voltagem 	- DC 0_25V
+  - Componentes
+  <table>
+	 <tr><b><td>Item</td>		<td>Referencia</td>	<td>Link</td>						<td>Versão</td></b></tr>
+	 <tr><td>Temperatura</td>	<td>DS18B20</td>	<td>https://github.com/milesburton/Arduino-Temperature-Control-Library</td>						<td></td></tr>
+	 <tr><td>OneWire</td>		<td></td>		<td>https://github.com/PaulStoffregen/OneWire</td>	<td>2.3.8</td></tr>
+	 <tr><td>Processamento Som</td>	<td>PT2314</td>		<td></td>						<td></td></tr>
+  	 <tr><td>Radio</td>		<td>SI4307</td>		<td></td>						<td></td></tr>
+	 <tr><td>Amplificador</td>	<td>OEP30Wx2</td>	<td></td>						<td></td></tr>
+	 <tr><td>Encoder (2)</td>	<td>KY-040</td>		<td></td>						<td></td></tr>
+	 <tr><td>Relogio RTC</td>	<td>DS3231</td>		<td></td>						<td></td></tr>
+	 <tr><td>Regulador Tensão</td>	<td>LM2596</td>		<td></td>						<td></td></tr>
+	 <tr><td>Sensor Voltagem</td>	<td>DC 0_25V</td>	<td></td>						<td></td></tr>
+  </table>
+  	
