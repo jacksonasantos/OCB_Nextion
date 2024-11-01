@@ -13,7 +13,7 @@ Onboard Computer Beetle
   - Componentes
   <table>
 	 <tr><b><td>Item</td>		<td>Referencia</td>	<td>Link</td>						<td>Versão</td></b></tr>
-	 <tr><td>Temperatura</td>	<td>DS18B20</td>	<td></td>						<td></td></tr>
+	 <tr><td>Temperatura</td>	<td>DS18B20</td>	<td>https://github.com/milesburton/Arduino-Temperature-Control-Library</td>						<td></td></tr>
 	 <tr><td>OneWire</td>		<td></td>		<td>https://github.com/PaulStoffregen/OneWire</td>	<td>2.3.8</td></tr>
 	 <tr><td>Processamento Som</td>	<td>PT2314</td>		<td></td>						<td></td></tr>
   	 <tr><td>Radio</td>		<td>SI4307</td>		<td></td>						<td></td></tr>
